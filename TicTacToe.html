@@ -69,7 +69,7 @@
     };     
       
     GameBoard.prototype.click = function(rowNum, colNum) { 
-      if( this.gameOver )
+      if( this.gameOver ) // if the game's over we won't let the user make any more moves.
         return;
 
       if( this.data[rowNum * 3 + colNum] != -1 )

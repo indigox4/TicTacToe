@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>JS Bin</title>
+  
+  <style>
+    table, th, td {
+        border: 1px solid black;
+        text-align: center;
+    }
+    table {
+      table-layout: fixed;
+    }
+    td {
+     width:   50px;
+     height:  50px;
+    }
+  </style>
+
+  
+</head>
+<body>
+  <p>Tic-Tac-Toe</p>
+  <p> Click a square</p>
+
+  <table class="boardStyle" style="width:100px">
+    <tr>
+      <td onclick="gGameBoard.click(0,0)"><p id="cell00"></p></td>
+      <td onclick="gGameBoard.click(0,1)"><p id="cell01"></p></td>
+      <td onclick="gGameBoard.click(0,2)"><p id="cell02"></p></td>
+    </tr>
+    <tr>
+      <td onclick="gGameBoard.click(1,0)"><p id="cell10"></p></td>
+      <td onclick="gGameBoard.click(1,1)"><p id="cell11"></p></td>
+      <td onclick="gGameBoard.click(1,2)"><p id="cell12"></p></td>
+    </tr>
+    <tr>
+      <td onclick="gGameBoard.click(2,0)"><p id="cell20"></p></td>
+      <td onclick="gGameBoard.click(2,1)"><p id="cell21"></p></td>
+      <td onclick="gGameBoard.click(2,2)"><p id="cell22"></p></td>
+    </tr>
+  <table>   
+   
+  <p id="winner"></p>
+  
+  <button onclick="gGameBoard.reset()">Reset</button>
+  
+  <script>
+    function GameBoard()
+    {
+      this.turn = 0;
+      this.gameOver = false;
+      this.data = [-1,-1,-1,-1,-1,-1,-1,-1,-1];
+    }
+    
+    GameBoard.prototype.updateBoard = function() {
+      for(r = 0; r < 3; r++){
+        for(c = 0; c < 3; c++){
+          if( this.data[r*3 + c] == 0 )
+            document.getElementById("cell" + r + c).innerHTML = "X";
+          else if( this.data[r*3 + c] == 1 )
+            document.getElementById("cell" + r + c).innerHTML = "O";
+          else
+            document.getElementById("cell" + r + c).innerHTML = "";
+        }
+      }    
+    };     
+      
+    GameBoard.prototype.click = function(rowNum, colNum) { 
+      if( this.gameOver )
+        return;
+
+      if( this.data[rowNum * 3 + colNum] != -1 )
+        return;
+
+      this.data[rowNum * 3 + colNum] = this.turn % 2;
+      this.turn++;
+
+      this.updateBoard();
+      this.checkWinner();
+    };
+
+    GameBoard.prototype.reset = function() {
+      this.turn = 0;
+      this.gameOver = false;
+      this.data = [-1,-1,-1,-1,-1,-1,-1,-1,-1];
+      
+      document.getElementById("winner").innerHTML = "";
+
+      this.updateBoard();
+    };
+    
+    GameBoard.prototype.checkWinner = function() {
+
+      for(p = 0; p < 2 && !this.gameOver; p++) {
+
+        // check rows and colums. s == 0 check rows, s == 1 check columns
+        for(s = 0; s < 2 && !this.gameOver; s++) {
+          for(r = 0; r < 3 && !this.gameOver; r++) {
+            var all = true;
+            for(c = 0; c < 3 && all; c++) {
+              if( s == 0)
+                all &= (this.data[r*3+c] == p );
+              else
+                all &= (this.data[c*3+r] == p );
+            }
+
+            if( all ) {
+              this.gameOver = true;
+            }  
+          }
+        } // end for s
+
+        // check diagonals
+        if( !this.gameOver ) {
+          if( (this.data[0] == p && this.data[4] == p && this.data[8] == p) ||
+              (this.data[2] == p && this.data[4] == p && this.data[6] == p) ) {
+            this.gameOver = true;
+          }
+        }
+
+        if( this.gameOver ) {
+          document.getElementById("winner").innerHTML = 
+            "Game over. The winner is " + (p == 0 ? "X" : "0");
+        }      
+      } // end for p
+
+      var hasEmpty = false;
+      for( i = 0; i < 9 && !this.gameOver && !hasEmpty; ++i ){
+        hasEmpty |= (this.data[i] == -1);
+      }
+
+      if( !hasEmpty && !this.gameOver ) {
+        this.gameOver = true;
+        document.getElementById("winner").innerHTML = "Game over. Tie game!";
+      }
+    }
+ 
+    
+    var gGameBoard = new GameBoard();
+    
+  </script>
+</body>
+</html>

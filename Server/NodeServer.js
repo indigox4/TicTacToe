@@ -3,10 +3,14 @@ const http = require('http');
 const hostname = '127.0.0.1';
 const port = 3000;
 
-const server = http.createServer((req, res) => {
+var server = http.createServer();
+
+server.on('request', function(req, res) {
   res.statusCode = 200;
   res.setHeader('Content-Type', 'text/plain');
-  res.end('Hello World\n');
+  
+  var outputStr = req.method + ', ' + req.url + ' ' + req.headers['user-agent'] + '\n';
+  res.end(outputStr);
 });
 
 server.listen(port, hostname, () => {

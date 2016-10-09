@@ -50,19 +50,34 @@
     var socket = io();
 
     $("#reset").click(function(){
-      alert("dude");
-      var data = [1,2,3,4,5];
-      socket.emit('resetBoard', data);
+      socket.emit('resetBoard');
     });
 
     $(".cell").click(function(){
-      alert("click " + $(this).attr("r") + $(this).attr("c"));
-    })
+      var rc = {row: parseInt($(this).attr("r")) , col: parseInt($(this).attr("c")) };
+      socket.emit('clickedSquare', rc);
+    });
 
-    function updateBoard(msg)
-    {
+    socket.on('serverUpdateBoard', function(msg) {
+      updateBoard(msg);
+    });
 
+    function updateBoard(gameBoard){
+      for(r = 0; r < 3; r++){
+        for(c = 0; c < 3; c++){
+          if( gameBoard.data[r*3 + c] == 0 )
+            $("#cell" + r + c).html("X");
+          else if( gameBoard.data[r*3 + c] == 1 )
+            $("#cell" + r + c).html("O");
+          else
+            $("#cell" + r + c).html("");
+        }
+      }
 
+      if( gameBoard.gameOver )
+        $("#winner").html("Game over!")
+      else
+        $("#winner").html("No winner")
     }
   </script>
 

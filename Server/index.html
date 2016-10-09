@@ -74,10 +74,19 @@
         }
       }
 
-      if( gameBoard.gameOver )
-        $("#winner").html("Game over!")
-      else
-        $("#winner").html("No winner")
+      if( gameBoard.gameOver ) {
+        var winner = "Game Over! ";
+        switch( gameBoard.winner ) {
+          case 0: winner += "X Wins!"; break;
+          case 1: winner += "O Wins!"; break;
+          default: winner += "Cat's game!"; break;
+        }
+
+        $("#winner").html( winner );
+      }
+      else {
+        $("#winner").html("");
+      }
     }
   </script>
 

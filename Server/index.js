@@ -2,6 +2,7 @@ function GameBoard()
 {
   this.turn = 0;
   this.gameOver = false;
+  this.winner = -1;
   this.data = [-1,-1,-1,-1,-1,-1,-1,-1,-1];
 }
   
@@ -22,6 +23,7 @@ GameBoard.prototype.click = function(rowNum, colNum) {
 GameBoard.prototype.reset = function() {
   this.turn = 0;
   this.gameOver = false;
+  this.winner = -1;
   this.data = [-1,-1,-1,-1,-1,-1,-1,-1,-1];
 };
 
@@ -52,6 +54,7 @@ GameBoard.prototype.checkWinner = function() {
       if( (this.data[0] == p && this.data[4] == p && this.data[8] == p) ||
           (this.data[2] == p && this.data[4] == p && this.data[6] == p) ) {
         this.gameOver = true;
+        this.winner = p;
       }
     }
 

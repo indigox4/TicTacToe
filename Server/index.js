@@ -1,3 +1,4 @@
+//-------------------------------------------------------------------------------
 function GameBoard()
 {
   this.turn = 0;
@@ -49,7 +50,7 @@ GameBoard.prototype.checkWinner = function() {
       }
     } // end for s
 
-    // check diagonals
+   // check diagonals
     if( !this.gameOver ) {
       if( (this.data[0] == p && this.data[4] == p && this.data[8] == p) ||
           (this.data[2] == p && this.data[4] == p && this.data[6] == p) ) {
@@ -75,16 +76,90 @@ GameBoard.prototype.checkWinner = function() {
   }
 }
 
+//-------------------------------------------------------------------------------
+// login stuff
+var gPlayers = {};
+
+function hasUser( username ) {
+  return gPlayers[username] != null;
+}
+
+function addUser( username, password ) {
+  gPlayers[username] = password;
+}
+
+function authenticateUser( username, password ){
+  return gPlayers[username] == password;
+}
+
+//-------------------------------------------------------------------------------
+// game lists
+var gGameList = [];
+
+function getGameList( user )
+{
+  var gameList = [];
+
+  var nbGames = gGameList.length;
+  for( i = 0; i < nbGames; ++i ) {
+    if( gGameList[i].user0 == user ||
+      gGameList[i].user1 == user ) {
+        gameList.push( gGameList[i] );
+      }
+  }
+
+  return gameList;
+}
+
+function addGame( user )
+{
+  // state 0: not started
+  //      1: in progress
+  //      2: complete
+  var newGame = { user0: user, user1: null, board: new GameBoard(), gameState: 0, gameId: gGameList.length };
+  gGameList.push( newGame );
+}
+
+function joinGame( gameIndex, userOne )
+{
+  if( gGameList.length <= gameIndex )
+    return false;
+
+  if( gGameList[gameIndex].user1 != null )
+    return false;
+
+  gGameList[gameIndex].user1 = userOne;
+  gGameList[gameIndex].gameState = 1;
+
+  return true;
+}
+
+function getGame( gameIndex )
+{
+  if( gGameList.length <= gameIndex )
+    return null;
+
+  return gGameList[gameIndex];
+}
+
+//-------------------------------------------------------------------------------
+
 var gGameBoard = new GameBoard();
 var app = require('express')();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
+var socketToUser = {};
+var socketToGame = {};
 
 app.get('/', function(req, res){
   res.sendFile(__dirname + '/index.html');
 });
 
 io.on('connection', function(socket){
+  console.log('user connected: ' + socket.id );
+
+  socketToUser[socket.id] = null;
+  socketToGame[socket.id] = null;
 
   socket.on('resetBoard', function(msg){
     console.log('reset message: ');
@@ -96,6 +171,72 @@ io.on('connection', function(socket){
     console.log('clickedSquare ' + msg.row + ' ' + msg.col);
     gGameBoard.click(msg.row, msg.col);
     io.emit('serverUpdateBoard', gGameBoard);
+  });
+
+  socket.on('login', function(msg) {
+    console.log( "login: " + msg.user + " " + msg.password );
+    if( !hasUser( msg.user) ) {
+      addUser( msg.user, msg.password );
+    }
+
+    // TODO: check if this socket is already assocated
+    // with a user, if so return false...
+
+    var loggedIn = false;
+    if( authenticateUser( msg.user, msg.password ) ){
+      // TODO: associate this socket with this user
+      loggedIn = true;
+      socketToUser[ socket.id ] = msg.user;
+    }
+
+    // send a response back to the client
+    var msg = { success: loggedIn, username: msg.user };
+    socket.emit('loginResponse', msg);
+  });
+
+  socket.on('requestGameList', function() {
+    console.log('request games list');
+    
+    var sockUser = socketToUser[socket.id]; 
+    if( sockUser != null ) {
+      var gameList = getGameList( sockUser );
+      
+      socket.emit( 'updateGameList', gameList );
+    }
+  });
+
+  socket.on('startNewGame', function() {
+
+    var sockUser = socketToUser[socket.id];
+    if( sockUser != null && socketToGame[socket.id] == null) {
+      addGame( sockUser );
+
+      var gameList = getGameList(sockUser);
+
+      socket.emit( 'updateGameList', gameList );
+    }
+  });
+
+  socket.on('joinGame', function(msg) {
+    console.log('join game');
+    var gameId = msg;
+    var sockUser = socketToUser[ socket.id ];
+    
+    if( sockUser == null ) // shouldn't happen 
+      return;
+
+    if( socketToGame[socket.id] == null ) {
+      joinGame( gameId, sockUser );
+
+      // this should goto only the user(s) that are affected.
+      io.emit('startGame', getGame(gameId) );
+    }
+  });
+
+  socket.on('disconnect', function(){
+    console.log('user disconnected: ' + socket.id);
+    socketToUser[socket.id] = null;
+    socketToGame[socket.id] = null;
   });
 });
 

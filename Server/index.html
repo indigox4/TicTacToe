@@ -18,36 +18,69 @@
 
 </head>
 <body>
+  <div id="loginUI">
+    Username <input id="username" type="text"/><br>
+    Password <input id="password" type="password"/><br>
+    <button id="submitId">Go!</button>
+    <p id="loginMsg"></p>
+  </div>
 
-  <p>Tic-Tac-Toe</p>
-  <p>Click a square</p>
+  <p id="loginStatus">Not logged in</p>
 
-  <table class="boardStyle" style="width:100px">
-    <tr>
-      <td class="cell" r=0 c=0><p id="cell00"></p></td>
-      <td class="cell" r=0 c=1><p id="cell01"></p></td>
-      <td class="cell" r=0 c=2><p id="cell02"></p></td>
-    </tr>
-    <tr>
-      <td class="cell" r=1 c=0><p id="cell10"></p></td>
-      <td class="cell" r=1 c=1><p id="cell11"></p></td>
-      <td class="cell" r=1 c=2><p id="cell12"></p></td>
-    </tr>
-    <tr>
-      <td class="cell" r=2 c=0><p id="cell20"></p></td>
-      <td class="cell" r=2 c=1><p id="cell21"></p></td>
-      <td class="cell" r=2 c=2><p id="cell22"></p></td>
-    </tr>
-  <table>   
-   
-  <p id="winner"></p>
-  
-  <button id="reset">Reset</button>
+  <div id="gameListUI">
+    <p>Select a game or start a new one</p>
+    <!-- TODO: list all available games to this player, including ones that
+    haven't started yet and are looking for additional players' -->
+    <ul id="gameListUL">
+
+    </ul>
+    <button id="startNewGame">Start new game</button>
+  </div>
+
+  <div id="boardUI">
+    <p>Tic-Tac-Toe</p>
+    <p>Click a square</p>
+    <!-- TODO Let the user know his opponent and who is X and O -->
+
+    <table class="boardStyle" style="width:100px">
+      <tr>
+        <td class="cell" r=0 c=0><p id="cell00"></p></td>
+        <td class="cell" r=0 c=1><p id="cell01"></p></td>
+        <td class="cell" r=0 c=2><p id="cell02"></p></td>
+      </tr>
+      <tr>
+        <td class="cell" r=1 c=0><p id="cell10"></p></td>
+        <td class="cell" r=1 c=1><p id="cell11"></p></td>
+        <td class="cell" r=1 c=2><p id="cell12"></p></td>
+      </tr>
+      <tr>
+        <td class="cell" r=2 c=0><p id="cell20"></p></td>
+        <td class="cell" r=2 c=1><p id="cell21"></p></td>
+        <td class="cell" r=2 c=2><p id="cell22"></p></td>
+      </tr>
+    <table>   
+    
+    <p id="winner"></p>
+    
+    <button id="reset">Reset</button>
+  </div>
 
   <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
   <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
   <script>
     var socket = io();
+
+    $("#boardUI").hide();
+    $("#gameListUI").hide();
+
+    $("#submitId").click(function(){
+      var loginInfo = { user: $("#username").val(), password: $("#password").val() };
+      socket.emit('login', loginInfo);
+    });
+
+    $("#startNewGame").click(function() {
+      socket.emit('startNewGame');
+    });
 
     $("#reset").click(function(){
       socket.emit('resetBoard');
@@ -58,8 +91,62 @@
       socket.emit('clickedSquare', rc);
     });
 
+    $(".joinGame").click( function() {
+      socket.emit('joinGame', $(this).attr("gameId") );
+    });
+
     socket.on('serverUpdateBoard', function(msg) {
       updateBoard(msg);
+    });
+
+    socket.on('loginResponse', function(msg) {
+      if( msg.success == true ) {
+        $("#loginStatus").html("Logged in as " + msg.username);
+        $("#loginMsg").html("");
+        $("#loginUI").hide();
+
+        socket.emit('requestGameList');
+      }
+      else {
+        $("#loginStatus").html("Not logged in");
+        $("#loginMsg").html("Invalid password");
+      }
+    });
+
+    socket.on('updateGameList', function(msg) {
+      $("#gameListUL").empty();
+
+      var nbGames = msg.length;
+      for( i = 0; i < nbGames; ++i ){
+        var liStr = "<li>Game #";
+        liStr += msg[i].gameId + ": , ";
+        liStr += msg[i].user0;
+        if( msg[i].user1 != null ) {
+          liStr += ", " + msg[i].user1;
+          liStr += " <button class='joinGame' gameId=";
+          liStr += msg[i].gameId;
+          liStr += " >Continue this game</button>";
+        }
+        else {
+          liStr += ", waiting for another player. ";
+          liStr += "<button class='joinGame' gameId=";
+          liStr += msg[i].gameId;
+          liStr += " >Join game</button>";
+        }
+
+        liStr += "</li>";  
+        $("#gameListUL").append( liStr );
+      }
+
+      $("#gameListUI").show();
+    });
+
+    socket.on('startGame', function(msg) {
+      $("#gameListUI").hide();
+
+      updateBoard(msg);
+
+      $("#gameBoardUI").show();
     });
 
     function updateBoard(gameBoard){

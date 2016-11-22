@@ -103,7 +103,8 @@ function getGameList( user )
   var nbGames = gGameList.length;
   for( i = 0; i < nbGames; ++i ) {
     if( gGameList[i].user0 == user ||
-      gGameList[i].user1 == user ) {
+      gGameList[i].user1 == user ||
+      gGameList[i].gameState == 0 ) {
         gameList.push( gGameList[i] );
       }
   }

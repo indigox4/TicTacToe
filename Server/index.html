@@ -92,6 +92,7 @@
     });
 
     $(".joinGame").click( function() {
+      alert('join game click');
       socket.emit('joinGame', $(this).attr("gameId") );
     });
 

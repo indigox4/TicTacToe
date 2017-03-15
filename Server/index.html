@@ -69,6 +69,7 @@
   <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
   <script>
     var socket = io();
+    var userName = "";
 
     $("#boardUI").hide();
     $("#gameListUI").hide();
@@ -91,13 +92,13 @@
       socket.emit('clickedSquare', rc);
     });
 
-    $(".joinGame").click( function() {
-      alert('join game click');
+    $("#gameListUL").on('click', '.joinGame', function()
+    {
       socket.emit('joinGame', $(this).attr("gameId") );
     });
 
     socket.on('serverUpdateBoard', function(msg) {
-      updateBoard(msg);
+      updateBoard(msg.board);
     });
 
     socket.on('loginResponse', function(msg) {
@@ -105,6 +106,8 @@
         $("#loginStatus").html("Logged in as " + msg.username);
         $("#loginMsg").html("");
         $("#loginUI").hide();
+
+        userName = msg.username;
 
         socket.emit('requestGameList');
       }
@@ -130,9 +133,12 @@
         }
         else {
           liStr += ", waiting for another player. ";
-          liStr += "<button class='joinGame' gameId=";
-          liStr += msg[i].gameId;
-          liStr += " >Join game</button>";
+
+          if( userName && userName != msg[i].user0 ) {
+            liStr += "<button class='joinGame' gameId=";
+            liStr += msg[i].gameId;
+            liStr += " >Join game</button>";
+          }
         }
 
         liStr += "</li>";  
@@ -144,10 +150,8 @@
 
     socket.on('startGame', function(msg) {
       $("#gameListUI").hide();
-
-      updateBoard(msg);
-
-      $("#gameBoardUI").show();
+      updateBoard(msg.board);
+      $("#boardUI").show();
     });
 
     function updateBoard(gameBoard){

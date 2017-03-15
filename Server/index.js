@@ -117,7 +117,7 @@ function addGame( user )
   // state 0: not started
   //      1: in progress
   //      2: complete
-  var newGame = { user0: user, user1: null, board: new GameBoard(), gameState: 0, gameId: gGameList.length };
+  var newGame = { user0: user, user1: null, board: new GameBoard(), gameState: 0, gameId: gGameList.length, turn: 0 };
   gGameList.push( newGame );
 }
 
@@ -170,8 +170,23 @@ io.on('connection', function(socket){
 
   socket.on('clickedSquare', function(msg) {
     console.log('clickedSquare ' + msg.row + ' ' + msg.col);
-    gGameBoard.click(msg.row, msg.col);
-    io.emit('serverUpdateBoard', gGameBoard);
+
+    var gameId = socketToGame[socket.id];
+    var game = getGame( gameId );
+    if( game != null )
+    { 
+      var user = socketToUser[socket.id];
+      if( (user == game.user0 && game.turn == 0) ||
+          (user == game.user1 && game.turn == 1) ) {
+
+        game.board.click(msg.row, msg.col);
+        game.turn = (game.turn + 1) % 2
+
+        // TODO: Emit to just the players!
+        io.emit('serverUpdateBoard', game);
+      }
+    }
+
   });
 
   socket.on('login', function(msg) {
@@ -228,8 +243,11 @@ io.on('connection', function(socket){
 
     if( socketToGame[socket.id] == null ) {
       joinGame( gameId, sockUser );
+      socketToGame[socket.id] = gameId;
 
-      // this should goto only the user(s) that are affected.
+      // Broadcast to everyone!
+      // TODO: this should goto only the user(s) that are affected.
+      // For now, we assume there are only 2 users
       io.emit('startGame', getGame(gameId) );
     }
   });

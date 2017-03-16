@@ -78,18 +78,58 @@ GameBoard.prototype.checkWinner = function() {
 
 //-------------------------------------------------------------------------------
 // login stuff
-var gPlayers = {};
+var gPlayers = [];
 
-function hasUser( username ) {
-  return gPlayers[username] != null;
+function hasUser( username )
+{
+  return getUser( username ) != null;
 }
 
-function addUser( username, password ) {
-  gPlayers[username] = password;
+function getUser( username ) {
+  for( i = 0; i < gPlayers.length; ++i ) {
+    if( gPlayers[i].name === username ) 
+      return gPlayers[i];
+  }
+
+  return null;
 }
 
-function authenticateUser( username, password ){
-  return gPlayers[username] == password;
+function addUser( username, pw ) {
+  var newUser = { name: username, password: pw, sockets: [], games: [] };
+  gPlayers.push( newUser );
+  return newUser;
+}
+
+function authenticateUser( username, pw ){
+  for( i = 0; i < gPlayers.length; ++i ) {
+    if( gPlayers[i].name === username && 
+        gPlayers[i].password === pw ) 
+      return true;
+  }  
+
+  return false;
+}
+
+function setUserSocket( usr, socketId )
+{
+    // sanity check: this socket should not already be associated
+    // with this user.
+    var exists = false;
+    for( i = 0; i < usr.sockets.length && !exists; ++i )
+      exists = usr.sockets[i] === socketId;
+    
+    if( !exists )
+      usr.sockets.push( socketId );
+}
+
+function removeUserSocket( usr, socketId )
+{
+  if( usr.sockets.length === 0 )
+    return;
+
+  for( i = (usr.sockets.length - 1); i >= 0; --i )
+    if( usr.sockets[i] === socketId )
+      usr.sockets.splice(i,1);
 }
 
 //-------------------------------------------------------------------------------
@@ -133,6 +173,17 @@ function joinGame( gameIndex, userOne )
   gGameList[gameIndex].gameState = 1;
 
   return true;
+}
+
+function getGameOtherUser( gameIndex, origUser ) {
+  var game = getGame( gameIndex );
+  if( game == null )
+    return null;
+  
+  if( game.user0 === origUser )
+    return game.user1;
+
+  return game.user0; 
 }
 
 function getGame( gameIndex )
@@ -186,23 +237,20 @@ io.on('connection', function(socket){
         io.emit('serverUpdateBoard', game);
       }
     }
-
   });
 
   socket.on('login', function(msg) {
     console.log( "login: " + msg.user + " " + msg.password );
-    if( !hasUser( msg.user) ) {
-      addUser( msg.user, msg.password );
+    var usr = getUser( msg.user );
+    if( usr == null ) {
+      usr = addUser( msg.user, msg.password );
     }
-
-    // TODO: check if this socket is already assocated
-    // with a user, if so return false...
 
     var loggedIn = false;
     if( authenticateUser( msg.user, msg.password ) ){
-      // TODO: associate this socket with this user
       loggedIn = true;
       socketToUser[ socket.id ] = msg.user;
+      setUserSocket( usr, socket.id );
     }
 
     // send a response back to the client
@@ -245,6 +293,22 @@ io.on('connection', function(socket){
       joinGame( gameId, sockUser );
       socketToGame[socket.id] = gameId;
 
+      // grab the socket(s) of the other user
+      // and add them to this game.
+      var otherUserName = getGameOtherUser( gameId, sockUser );
+      var otherUser = getUser( otherUserName );
+
+      if( otherUser == null ) // shouldn't happen
+        return;
+
+      // TODO: Move this into user class
+      // This basically assigns this game to all sockets belonging
+      // to the other user that don't already have a game. 
+      for( i = 0; i < otherUser.sockets.length; ++i ) {
+        if( socketToGame[ otherUser.sockets[i] ] == null )
+          socketToGame[ otherUser.sockets[i] ] = gameId;
+      }
+
       // Broadcast to everyone!
       // TODO: this should goto only the user(s) that are affected.
       // For now, we assume there are only 2 users
@@ -254,6 +318,10 @@ io.on('connection', function(socket){
 
   socket.on('disconnect', function(){
     console.log('user disconnected: ' + socket.id);
+    var usr = getUser( socketToUser[socket.id] );
+    if( usr != null )
+      removeUserSocket( usr, socket.id );
+
     socketToUser[socket.id] = null;
     socketToGame[socket.id] = null;
   });

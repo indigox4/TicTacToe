@@ -132,6 +132,13 @@ function removeUserSocket( usr, socketId )
       usr.sockets.splice(i,1);
 }
 
+function getUserSocket( usr )
+{
+  if( usr.sockets.length > 0 )
+    return usr.sockets[0];
+
+  return 0;
+}
 //-------------------------------------------------------------------------------
 // game lists
 var gGameList = [];
@@ -312,7 +319,11 @@ io.on('connection', function(socket){
       // Broadcast to everyone!
       // TODO: this should goto only the user(s) that are affected.
       // For now, we assume there are only 2 users
-      io.emit('startGame', getGame(gameId) );
+      //io.emit('startGame', getGame(gameId) );
+      socket.emit('startGame', getGame(gameId) );
+      var otherUserSocketId = getUserSocket(otherUser);
+      if( otherUserSocketId != 0 )
+        io.to( otherUserSocketId ).emit('startGame', getGame(gameId) );
     }
   });
 

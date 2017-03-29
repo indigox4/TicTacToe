@@ -27,7 +27,7 @@
 
   <p id="loginStatus">Not logged in</p>
 
-  <div id="gameListUI">
+  <div id="gameListUI" >
     <p>Select a game or start a new one</p>
     <!-- TODO: list all available games to this player, including ones that
     haven't started yet and are looking for additional players' -->
@@ -37,7 +37,7 @@
     <button id="startNewGame">Start new game</button>
   </div>
 
-  <div id="boardUI">
+  <div id="boardUI" >
     <p>Tic-Tac-Toe</p>
     <p id="gameTitle"></p>
     <p id="gameStatus">Click a square</p>
@@ -60,8 +60,6 @@
         <td class="cell" r=2 c=2><p id="cell22"></p></td>
       </tr>
     <table>   
-    
-    <p id="winner"></p>
     
     <button id="reset">Reset</button>
   </div>
@@ -100,7 +98,7 @@
 
     socket.on('serverUpdateBoard', function(msg) {
       updateBoardStatus(msg);
-      updateBoard(msg.board);
+      updateBoard(msg);
     });
 
     socket.on('loginResponse', function(msg) {
@@ -157,7 +155,7 @@
       $("#gameTitle").html("Playing against " + opponent);
 
       updateBoardStatus(msg);
-      updateBoard(msg.board);
+      updateBoard(msg);
       $("#boardUI").show();
     });
 
@@ -167,10 +165,29 @@
           (game.user1 == userName && game.turn == 1) )
           status = "Click a square";
 
+      var gameBoard = game.board;
+      if( gameBoard.gameOver ) {
+        status = "Game over! ";
+
+        var winner = "";
+        if( (gameBoard.winner == 0 && game.user0 == userName) || 
+            (gameBoard.winner == 1 && game.user1 == userName) ) {
+          winner += "You win!";
+        }
+        else if( gameBoard.winner == -1 ) {
+          winner += "Cat's game!";
+        }
+        else {
+          winner += "You lose!"
+        }
+        status += winner;
+      }
+
       $("#gameStatus").html(status);
     }
 
-    function updateBoard(gameBoard){
+    function updateBoard( game ){
+      gameBoard = game.board
       for(r = 0; r < 3; r++){
         for(c = 0; c < 3; c++){
           if( gameBoard.data[r*3 + c] == 0 )
@@ -182,12 +199,18 @@
         }
       }
 
+/*
       if( gameBoard.gameOver ) {
         var winner = "Game Over! ";
-        switch( gameBoard.winner ) {
-          case 0: winner += "X Wins!"; break;
-          case 1: winner += "O Wins!"; break;
-          default: winner += "Cat's game!"; break;
+        if( (gameBoard.winner == 0 && game.user0 == userName) || 
+            (gameBoard.winner == 1 && game.user1 == userName) ) {
+          winner += "You win!";
+        }
+        else if( gameBoard.winner == -1 ) {
+          winner += "Cat's game!";
+        }
+        else {
+          winner += "You lose!"
         }
 
         $("#winner").html( winner );
@@ -195,6 +218,7 @@
       else {
         $("#winner").html("");
       }
+*/
     }
   </script>
 

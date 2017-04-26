@@ -62,6 +62,7 @@
     <table>   
     
     <button id="reset">Reset</button>
+    <button id="lobby">Return to lobby</button>
   </div>
 
   <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
@@ -84,6 +85,14 @@
 
     $("#reset").click(function(){
       socket.emit('resetBoard');
+    });
+
+    $("#lobby").click(function(){
+        socket.emit('requestGameList');
+        
+        $("#gameListUL").empty();
+        $("#boardUI").hide();
+        $("#gameListUI").show();
     });
 
     $(".cell").click(function(){
@@ -125,20 +134,19 @@
         var liStr = "<li>Game #";
         liStr += msg[i].gameId + ": , ";
         liStr += msg[i].user0;
-        if( msg[i].user1 != null ) {
-          liStr += ", " + msg[i].user1;
-          liStr += " <button class='joinGame' gameId=";
-          liStr += msg[i].gameId;
-          liStr += " >Continue this game</button>";
-        }
-        else {
-          liStr += ", waiting for another player. ";
+        liStr += ", ";
+        liStr += msg[i].user1 != null ? msg[i].user1 : "waiting for another player ";
 
-          if( userName && userName != msg[i].user0 ) {
+        if( msg[i].gameState == 0 && userName && msg[i].user0 != userName ) {
             liStr += "<button class='joinGame' gameId=";
             liStr += msg[i].gameId;
             liStr += " >Join game</button>";
-          }
+        }
+        else if( msg[i].gameState == 1 && userName && 
+                 ( msg[i].user0 == userName || msg[i].user1 == userName) ) {
+          liStr += " <button class='joinGame' gameId=";
+          liStr += msg[i].gameId;
+          liStr += " >Continue this game</button>";
         }
 
         liStr += "</li>";  
@@ -172,15 +180,16 @@
         var winner = "";
         if( (gameBoard.winner == 0 && game.user0 == userName) || 
             (gameBoard.winner == 1 && game.user1 == userName) ) {
-          winner += "You win!";
+          winner += "You win! ";
         }
         else if( gameBoard.winner == -1 ) {
-          winner += "Cat's game!";
+          winner += "Cat's game! ";
         }
         else {
-          winner += "You lose!"
+          winner += "You lose! "
         }
         status += winner;
+        status += "Return to the lobby to play another game";
       }
 
       $("#gameStatus").html(status);
@@ -198,27 +207,6 @@
             $("#cell" + r + c).html("");
         }
       }
-
-/*
-      if( gameBoard.gameOver ) {
-        var winner = "Game Over! ";
-        if( (gameBoard.winner == 0 && game.user0 == userName) || 
-            (gameBoard.winner == 1 && game.user1 == userName) ) {
-          winner += "You win!";
-        }
-        else if( gameBoard.winner == -1 ) {
-          winner += "Cat's game!";
-        }
-        else {
-          winner += "You lose!"
-        }
-
-        $("#winner").html( winner );
-      }
-      else {
-        $("#winner").html("");
-      }
-*/
     }
   </script>
 

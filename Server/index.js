@@ -149,9 +149,12 @@ function getGameList( user )
 
   var nbGames = gGameList.length;
   for( i = 0; i < nbGames; ++i ) {
-    if( gGameList[i].user0 == user ||
-      gGameList[i].user1 == user ||
-      gGameList[i].gameState == 0 ) {
+
+    // Generate a list of games that the user can actually play.
+    var isPlaying = gGameList[i].user0 == user || gGameList[i].user1 == user;
+    var gameOver = gGameList[i].gameState == 2;
+    var gameOpen = gGameList[i].gameState == 0;
+    if( (isPlaying && !gameOver) || gameOpen ) { 
         gameList.push( gGameList[i] );
       }
   }
@@ -164,7 +167,12 @@ function addGame( user )
   // state 0: not started
   //      1: in progress
   //      2: complete
-  var newGame = { user0: user, user1: null, board: new GameBoard(), gameState: 0, gameId: gGameList.length, turn: 0 };
+  var newGame = { user0: user, 
+                  user1: null, 
+                  board: new GameBoard(), 
+                  gameState: 0, 
+                  gameId: gGameList.length, 
+                  turn: 0 };
   gGameList.push( newGame );
 }
 
@@ -237,8 +245,13 @@ io.on('connection', function(socket){
       if( (user == game.user0 && game.turn == 0) ||
           (user == game.user1 && game.turn == 1) ) {
 
+        // TODO: Push this logic into the game class
         game.board.click(msg.row, msg.col);
         game.turn = (game.turn + 1) % 2
+        if( game.board.gameOver ) {
+          game.gameState = 2;
+          socketToGame[socket.id] = null;  
+        }
 
         // TODO: Emit to just the players!
         io.emit('serverUpdateBoard', game);

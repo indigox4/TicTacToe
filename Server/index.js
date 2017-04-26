@@ -192,6 +192,11 @@ function joinGame( gameIndex, userOne )
 
 function getGameOtherUser( gameIndex, origUser ) {
   var game = getGame( gameIndex );
+  return getGameOtherUser2( game, origUser );
+}
+
+function getGameOtherUser2( game, origUser )
+{
   if( game == null )
     return null;
   
@@ -245,12 +250,19 @@ io.on('connection', function(socket){
       if( (user == game.user0 && game.turn == 0) ||
           (user == game.user1 && game.turn == 1) ) {
 
-        // TODO: Push this logic into the game class
         game.board.click(msg.row, msg.col);
         game.turn = (game.turn + 1) % 2
         if( game.board.gameOver ) {
+
+          // TODO: Push this logic into the game class
           game.gameState = 2;
           socketToGame[socket.id] = null;  
+
+          // once the game is over, clear the socket to game mappings
+          // to allow the user to play more games
+          var otherUser = getUser( getGameOtherUser2( game, user ) );
+          var otherSocketId = getUserSocket( otherUser );
+          socketToGame[ otherSocketId ] = null;
         }
 
         // TODO: Emit to just the players!
@@ -284,19 +296,20 @@ io.on('connection', function(socket){
     var sockUser = socketToUser[socket.id]; 
     if( sockUser != null ) {
       var gameList = getGameList( sockUser );
-      
+
       socket.emit( 'updateGameList', gameList );
     }
   });
 
   socket.on('startNewGame', function() {
+    console.log('start game');
 
     var sockUser = socketToUser[socket.id];
     if( sockUser != null && socketToGame[socket.id] == null) {
       addGame( sockUser );
 
       var gameList = getGameList(sockUser);
-
+      
       socket.emit( 'updateGameList', gameList );
     }
   });

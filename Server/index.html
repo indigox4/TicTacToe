@@ -71,8 +71,16 @@
     var socket = io();
     var userName = "";
 
-    $("#boardUI").hide();
-    $("#gameListUI").hide();
+    // playerMode 
+    // 0 - not logged in
+    // 1 - logged in
+    // 2 - viewing games list 
+    // 3 - playing game  
+    var playerMode = 0;
+
+    setMode(0);
+    //$("#boardUI").hide();
+    //$("#gameListUI").hide();
 
     $("#submitId").click(function(){
       var loginInfo = { user: $("#username").val(), password: $("#password").val() };
@@ -114,9 +122,10 @@
       if( msg.success == true ) {
         $("#loginStatus").html("Logged in as " + msg.username);
         $("#loginMsg").html("");
-        $("#loginUI").hide();
+        //$("#loginUI").hide();
 
         userName = msg.username;
+        setMode(1);
 
         socket.emit('requestGameList');
       }
@@ -153,19 +162,51 @@
         $("#gameListUL").append( liStr );
       }
 
-      $("#gameListUI").show();
+      //$("#gameListUI").show();
+      setMode(2);
     });
 
     socket.on('startGame', function(msg) {
-      $("#gameListUI").hide();
+      //$("#gameListUI").hide();
 
       var opponent = msg.user0 == userName ? msg.user1 : msg.user0;
       $("#gameTitle").html("Playing against " + opponent);
 
       updateBoardStatus(msg);
       updateBoard(msg);
-      $("#boardUI").show();
+
+      setMode(3);
+      //$("#boardUI").show();
     });
+
+    function setMode( newMode ) {
+      playerMode = newMode;
+
+      if( playerMode == 0 ) {
+        $("#gameListUI").hide();
+        $("#boardUI").hide();
+        $("#loginUI").show();
+        $("#loginStatus").hide();
+      }
+      else if( playerMode == 1 ) {
+        $("#gameListUI").hide();
+        $("#boardUI").hide();
+        $("#loginStatus").show();
+        $("#loginUI").hide();
+      }
+      else if( playerMode == 2 ) {
+        $("#gameListUI").show();
+        $("#boardUI").hide();
+        $("#loginUI").hide();
+        $("#loginStatus").show();
+      }
+      else if( playerMode == 3 ) {
+        $("#gameListUI").hide();
+        $("#boardUI").show();
+        $("#loginUI").hide();
+        $("#loginStatus").show();
+      }
+    }
 
     function updateBoardStatus( game ) {
       var status = "Waiting for opponent";

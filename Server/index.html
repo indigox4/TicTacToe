@@ -61,7 +61,6 @@
       </tr>
     <table>   
     
-    <button id="reset">Reset</button>
     <button id="lobby">Return to lobby</button>
   </div>
 
@@ -71,16 +70,14 @@
     var socket = io();
     var userName = "";
 
-    // playerMode 
+    // uiMode 
     // 0 - not logged in
     // 1 - logged in
     // 2 - viewing games list 
     // 3 - playing game  
-    var playerMode = 0;
+    var gUiMode = 0;
 
-    setMode(0);
-    //$("#boardUI").hide();
-    //$("#gameListUI").hide();
+    setUiMode(0);
 
     $("#submitId").click(function(){
       var loginInfo = { user: $("#username").val(), password: $("#password").val() };
@@ -91,16 +88,9 @@
       socket.emit('startNewGame');
     });
 
-    $("#reset").click(function(){
-      socket.emit('resetBoard');
-    });
-
     $("#lobby").click(function(){
         socket.emit('requestGameList');
-        
-        $("#gameListUL").empty();
-        $("#boardUI").hide();
-        $("#gameListUI").show();
+        setUiMode(2);
     });
 
     $(".cell").click(function(){
@@ -122,10 +112,9 @@
       if( msg.success == true ) {
         $("#loginStatus").html("Logged in as " + msg.username);
         $("#loginMsg").html("");
-        //$("#loginUI").hide();
 
         userName = msg.username;
-        setMode(1);
+        setUiMode(1);
 
         socket.emit('requestGameList');
       }
@@ -162,45 +151,47 @@
         $("#gameListUL").append( liStr );
       }
 
-      //$("#gameListUI").show();
-      setMode(2);
+      if( uiMode() == 1 )
+        setUiMode(2);
     });
 
     socket.on('startGame', function(msg) {
-      //$("#gameListUI").hide();
+      if( uiMode() == 1 || uiMode() == 2 ) {
+        var opponent = msg.user0 == userName ? msg.user1 : msg.user0;
+        $("#gameTitle").html("Game #" + msg.gameId + ", Playing against " + opponent);
 
-      var opponent = msg.user0 == userName ? msg.user1 : msg.user0;
-      $("#gameTitle").html("Playing against " + opponent);
-
-      updateBoardStatus(msg);
-      updateBoard(msg);
-
-      setMode(3);
-      //$("#boardUI").show();
+        updateBoardStatus(msg);
+        updateBoard(msg);
+        setUiMode(3);
+      }
     });
 
-    function setMode( newMode ) {
-      playerMode = newMode;
+    function uiMode() {
+      return gUiMode;
+    }
 
-      if( playerMode == 0 ) {
+    function setUiMode( newMode ) {
+      gUiMode = newMode;
+
+      if( gUiMode == 0 ) {
         $("#gameListUI").hide();
         $("#boardUI").hide();
         $("#loginUI").show();
         $("#loginStatus").hide();
       }
-      else if( playerMode == 1 ) {
-        $("#gameListUI").hide();
+      else if( gUiMode == 1 ) {
+        $("#gameListUI").show();
         $("#boardUI").hide();
         $("#loginStatus").show();
         $("#loginUI").hide();
       }
-      else if( playerMode == 2 ) {
+      else if( gUiMode == 2 ) {
         $("#gameListUI").show();
         $("#boardUI").hide();
         $("#loginUI").hide();
         $("#loginStatus").show();
       }
-      else if( playerMode == 3 ) {
+      else if( gUiMode == 3 ) {
         $("#gameListUI").hide();
         $("#boardUI").show();
         $("#loginUI").hide();

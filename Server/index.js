@@ -134,7 +134,7 @@ function removeUserSocket( usr, socketId )
 
 function getUserSocket( usr )
 {
-  if( usr.sockets.length > 0 )
+  if( usr != null && usr.sockets.length > 0 )
     return usr.sockets[0];
 
   return 0;
@@ -143,18 +143,13 @@ function getUserSocket( usr )
 // game lists
 var gGameList = [];
 
-function getGameList( user )
+function getGameList()
 {
   var gameList = [];
 
   var nbGames = gGameList.length;
   for( i = 0; i < nbGames; ++i ) {
-
-    // Generate a list of games that the user can actually play.
-    var isPlaying = gGameList[i].user0 == user || gGameList[i].user1 == user;
-    var gameOver = gGameList[i].gameState == 2;
-    var gameOpen = gGameList[i].gameState == 0;
-    if( (isPlaying && !gameOver) || gameOpen ) { 
+    if( gGameList[i].gameState < 2 ) { 
         gameList.push( gGameList[i] );
       }
   }
@@ -181,13 +176,21 @@ function joinGame( gameIndex, userOne )
   if( gGameList.length <= gameIndex )
     return false;
 
-  if( gGameList[gameIndex].user1 != null )
-    return false;
+  var game = gGameList[gameIndex]; 
 
-  gGameList[gameIndex].user1 = userOne;
-  gGameList[gameIndex].gameState = 1;
+  if( game.user1 == null ) {
+    game.user1 = userOne;
+    game.gameState = 1;
+    return true;
+  }
 
-  return true;
+  if( (game.user0 == userOne ||
+       game.user1 == userOne ) &&
+       game.gameState == 1 ) {
+    return true;
+  }
+
+  return false;
 }
 
 function getGameOtherUser( gameIndex, origUser ) {
@@ -250,23 +253,32 @@ io.on('connection', function(socket){
       if( (user == game.user0 && game.turn == 0) ||
           (user == game.user1 && game.turn == 1) ) {
 
+        var otherUser = getUser( getGameOtherUser2( game, user ) );
+        var otherSocketId = getUserSocket( otherUser );
+
         game.board.click(msg.row, msg.col);
         game.turn = (game.turn + 1) % 2
         if( game.board.gameOver ) {
 
           // TODO: Push this logic into the game class
           game.gameState = 2;
-          socketToGame[socket.id] = null;  
+          socketToGame[ socket.id ] = null;  
 
           // once the game is over, clear the socket to game mappings
           // to allow the user to play more games
-          var otherUser = getUser( getGameOtherUser2( game, user ) );
-          var otherSocketId = getUserSocket( otherUser );
-          socketToGame[ otherSocketId ] = null;
+          if( otherSocketId != 0 )
+            socketToGame[ otherSocketId ] = null;
+
+          // tell everyone to update their game list
+          var gameList = getGameList();
+          io.emit('updateGameList', gameList);
         }
 
-        // TODO: Emit to just the players!
-        io.emit('serverUpdateBoard', game);
+        // Emit to just the two players playing the game.
+        socket.emit('serverUpdateBoard', game );
+        
+        if( otherSocketId != 0 )
+          io.to( otherSocketId ).emit('serverUpdateBoard', game );
       }
     }
   });
@@ -292,13 +304,9 @@ io.on('connection', function(socket){
 
   socket.on('requestGameList', function() {
     console.log('request games list');
-    
-    var sockUser = socketToUser[socket.id]; 
-    if( sockUser != null ) {
-      var gameList = getGameList( sockUser );
 
-      socket.emit( 'updateGameList', gameList );
-    }
+    var gameList = getGameList();
+    socket.emit( 'updateGameList', gameList );
   });
 
   socket.on('startNewGame', function() {
@@ -308,9 +316,8 @@ io.on('connection', function(socket){
     if( sockUser != null && socketToGame[socket.id] == null) {
       addGame( sockUser );
 
-      var gameList = getGameList(sockUser);
-      
-      socket.emit( 'updateGameList', gameList );
+      var gameList = getGameList();
+      io.emit( 'updateGameList', gameList );
     }
   });
 
@@ -323,7 +330,13 @@ io.on('connection', function(socket){
       return;
 
     if( socketToGame[socket.id] == null ) {
-      joinGame( gameId, sockUser );
+      if( !joinGame( gameId, sockUser ) ) {
+
+        // user's game list might be stale, send them a new one.
+        var gameList = getGameList();
+        socket.emit('updateGameList', gameList);
+        return;
+      }
       socketToGame[socket.id] = gameId;
 
       // grab the socket(s) of the other user
@@ -334,22 +347,14 @@ io.on('connection', function(socket){
       if( otherUser == null ) // shouldn't happen
         return;
 
-      // TODO: Move this into user class
-      // This basically assigns this game to all sockets belonging
-      // to the other user that don't already have a game. 
-      for( i = 0; i < otherUser.sockets.length; ++i ) {
-        if( socketToGame[ otherUser.sockets[i] ] == null )
-          socketToGame[ otherUser.sockets[i] ] = gameId;
-      }
-
-      // Broadcast to everyone!
-      // TODO: this should goto only the user(s) that are affected.
-      // For now, we assume there are only 2 users
-      //io.emit('startGame', getGame(gameId) );
+      // This user enters play mode
       socket.emit('startGame', getGame(gameId) );
-      var otherUserSocketId = getUserSocket(otherUser);
-      if( otherUserSocketId != 0 )
-        io.to( otherUserSocketId ).emit('startGame', getGame(gameId) );
+
+      // Notify other users. This will tell the other player he can now play
+      // this game, and it will tell the other users this game is now unavailable
+      // to them.
+      var gameList = getGameList();
+      io.emit('updateGameList', gameList );
     }
   });
 

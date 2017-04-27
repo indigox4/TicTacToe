@@ -8,3 +8,7 @@ Implements:
 - Basic UI and logic for a game of tic-tac-toe
 
 
+Still TODO:
+- User name/id persistence if the server goes down
+- Game state persistence
+- Same user logged in from multiple devices

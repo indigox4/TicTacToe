@@ -220,15 +220,27 @@ function getGame( gameIndex )
 //-------------------------------------------------------------------------------
 
 var gGameBoard = new GameBoard();
-var app = require('express')();
-var http = require('http').Server(app);
-var io = require('socket.io')(http);
 var socketToUser = {};
 var socketToGame = {};
 
-app.get('/', function(req, res){
-  res.sendFile(__dirname + '/index.html');
+const express = require('express');
+const socketIO = require('socket.io');
+const path = require('path');
+
+const PORT = process.env.PORT || 3000;
+const INDEX = path.join(__dirname, 'index.html');
+
+const app = express()
+  .use((req, res) => res.sendFile(INDEX) )
+  .listen(PORT, () => console.log(`Listening on ${ PORT }`));
+
+const io = socketIO(app);
+
+io.on('connection', (socket) => {
+  console.log('Client connected');
+  socket.on('disconnect', () => console.log('Client disconnected'));
 });
+
 
 io.on('connection', function(socket){
   console.log('user connected: ' + socket.id );
@@ -369,11 +381,11 @@ io.on('connection', function(socket){
   });
 });
 
-app.set('port', (process.env.PORT || 3000));
+// app.set('port', (process.env.PORT || 3000));
 
-app.listen(app.get('port'), function() {
-  console.log('Node app is running on port', app.get('port'));
-});
+// app.listen(app.get('port'), function() {
+//   console.log('Node app is running on port', app.get('port'));
+// });
 
 // http.listen( process.env.PORT || 3000, function(){
 //   console.log('listening on *: some port tbd');

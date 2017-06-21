@@ -16,7 +16,7 @@ GameBoard.prototype.click = function(rowNum, colNum) {
 
   this.data[rowNum * 3 + colNum] = this.turn % 2;
   this.turn++;
-
+ 
   //this.updateBoard();
   this.checkWinner();
 };
@@ -237,12 +237,6 @@ const app = express()
 const io = socketIO(app);
 
 io.on('connection', (socket) => {
-  console.log('Client connected');
-  socket.on('disconnect', () => console.log('Client disconnected'));
-});
-
-
-io.on('connection', function(socket){
   console.log('user connected: ' + socket.id );
 
   socketToUser[socket.id] = null;
@@ -295,8 +289,9 @@ io.on('connection', function(socket){
     }
   });
 
-  socket.on('login', function(msg) {
+  socket.on('login', (msg) => {
     console.log( "login: " + msg.user + " " + msg.password );
+    
     var usr = getUser( msg.user );
     if( usr == null ) {
       usr = addUser( msg.user, msg.password );
@@ -312,6 +307,7 @@ io.on('connection', function(socket){
     // send a response back to the client
     var msg = { success: loggedIn, username: msg.user };
     socket.emit('loginResponse', msg);
+    
   });
 
   socket.on('requestGameList', function() {
@@ -379,17 +375,9 @@ io.on('connection', function(socket){
     socketToUser[socket.id] = null;
     socketToGame[socket.id] = null;
   });
+  
 });
 
-// app.set('port', (process.env.PORT || 3000));
-
-// app.listen(app.get('port'), function() {
-//   console.log('Node app is running on port', app.get('port'));
-// });
-
-// http.listen( process.env.PORT || 3000, function(){
-//   console.log('listening on *: some port tbd');
-// });
 
 
 

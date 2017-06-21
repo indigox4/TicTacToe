@@ -64,8 +64,8 @@
     <button id="lobby">Return to lobby</button>
   </div>
 
-  <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
-  <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
   <script>
     var socket = io();
     var userName = "";
@@ -82,6 +82,7 @@
     $("#submitId").click(function(){
       var loginInfo = { user: $("#username").val(), password: $("#password").val() };
       socket.emit('login', loginInfo);
+      
     });
 
     $("#startNewGame").click(function() {
